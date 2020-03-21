@@ -14,7 +14,7 @@ Importing the Data:
 
 ```{r}
 library(readr)
-US_Accidents_May19 <- read_csv("~/Desktop/199 Research/US_Accidents_May19.csv")
+US_Accidents_May19 <- read_csv("US_Accidents_May19.csv")
 dim(US_Accidents_May19)
 names(US_Accidents_May19)
 ```
