@@ -13,3 +13,5 @@ This also includes the codebook used in the final dataset.
 Final .Rmd File: 
 
 199Research.Rmd is the file that was used to carry out all exploratory data and analysis. It was made for reproducibility of the research. 
+
+199Research.html is the html file rendered from the final .Rmd
