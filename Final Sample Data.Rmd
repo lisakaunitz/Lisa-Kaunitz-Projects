@@ -1,0 +1,152 @@
+---
+title: '199: Sample of Data'
+author: "Lisa Kaunitz"
+date: "3/21/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Sample of Data: 
+
+```{r}
+US_Accidents_May19 <- read_csv("~/Desktop/199 Research/US_Accidents_May19.csv")
+
+```
+
+Cleaning the original data to create the finalized dataset: 
+
+```{r}
+accidents <- US_Accidents_May19[,-c(2, 7:10, 19:22)] # Source, Start Lat, Start Lng, End Lat, End Lng, Country, Timezone, Airport Code. 
+
+# NEW TIME VARIABLE
+
+# `diff.time` is the difference of time in minutes from end to start time of the accident
+accidents$Total_Time <- difftime(US_Accidents_May19$End_Time, US_Accidents_May19$Start_Time, units="mins")
+accidents$Total_Time <- as.numeric(accidents$Total_Time)
+summary(accidents$Total_Time) # It is not realistic to have nevative time, nor 1786320 which is 29,772 hours.  
+
+# Now, we can get rid of the `Start_Time` and `End_Time` variables. We also dont need the Street Number 
+accidents <- accidents[,-c(4,5,8)]
+
+# Fix Total_Time variable so we dont have negative time values: 
+accidents$Total_Time = ifelse(accidents$Total_Time > 0, accidents$Total_Time, NA) # got rid of 13 values 
+# Creating a cap on the amount of time the accident took (getting rid of extreme values) 
+accidents$Total_Time = ifelse(accidents$Total_Time > 400, NA, accidents$Total_Time) # total of 4,745 NA's now. 
+
+# CLEANING WEATHER CONDITIONS: 
+
+library(dplyr)
+
+# With 62 differnt reported weather conditions, we can group them up into 5 main groups: rain, snow, low_visibility, cloudy, clear
+
+# Rain 
+accidents <- accidents  %>% 
+  mutate(Weather_Condition = replace(Weather_Condition, 
+                                     Weather_Condition == "Light Rain" |
+                                     Weather_Condition == "Rain" | 
+                                       Weather_Condition == "Light Drizzle" | 
+                                       Weather_Condition == "Heavy Rain" | 
+                                       Weather_Condition == "Mist" | 
+                                       Weather_Condition == "Drizzle" | 
+                                       Weather_Condition == "Rain Showers" | 
+                                       Weather_Condition ==  "Light Thunderstorms and Rain" | 
+                                       Weather_Condition == "Light Rain Showers" |
+                                       Weather_Condition == "Light Freezing Rain" | 
+                                       Weather_Condition == "Heavy Drizzle" | 
+                                       Weather_Condition =="Heavy Thunderstorms and Rain" | 
+                                       Weather_Condition == "Thunderstorms and Rain" | 
+                                       Weather_Condition == "Heavy Rain Showers", "rain" ))
+
+# Snow
+accidents <- accidents %>% mutate(Weather_Condition = replace(Weather_Condition, 
+                                                              Weather_Condition == "Light Freezing Drizzle" |
+                                                                Weather_Condition == "Light Snow" | 
+                                                                Weather_Condition == "Snow" | 
+                                                                Weather_Condition == "Hail" | 
+                                                                Weather_Condition == "Blowing Snow" | 
+                                                                Weather_Condition == "Heavy Snow" | 
+                                                                Weather_Condition == "Ice Pellets" |
+                                                                Weather_Condition == "Low Drifting Snow" | 
+                                                                Weather_Condition == "Light Thunderstorms and Snow" | 
+                                                                Weather_Condition == "Light Ice Pellets" | 
+                                                                Weather_Condition == "Snow Showers" | 
+                                                                Weather_Condition == "Light Snow Showers" | 
+                                                                Weather_Condition == "Heavy Thunderstorms and Snow" | 
+                                                                Weather_Condition == "Snow Grains" | 
+                                                                Weather_Condition == "Heavy Blowing Snow" | 
+                                                                Weather_Condition ==  "Heavy Freezing Drizzle" | 
+                                                                Weather_Condition == "Light Blowing Snow" | 
+                                                                Weather_Condition == "Small Hail" | 
+                                                                Weather_Condition == "Heavy Thunderstorms with Small Hail" | 
+                                                                Weather_Condition == "Light Snow Grains" | 
+                                                                Weather_Condition == "Heavy Ice Pellets" | 
+                                                                Weather_Condition == "Heavy Freezing Rain" | 
+                                                                Weather_Condition == "Light Hail" | 
+                                                                Weather_Condition == "Thunderstorms and Snow", "snow"))
+
+# Low Visibility
+accidents <- accidents %>% mutate(Weather_Condition = replace(Weather_Condition, 
+                                                              Weather_Condition == "Haze" | 
+                                                                Weather_Condition == "Fog" | 
+                                                                Weather_Condition == "Shallow Fog" | 
+                                                                Weather_Condition == "Light Haze" | 
+                                                                Weather_Condition == "Smoke" | 
+                                                                Weather_Condition == "Patches of Fog" |
+                                                                Weather_Condition ==  "Light Freezing Fog"  | 
+                                                                Weather_Condition == "Light Fog" | 
+                                                                Weather_Condition ==  "Dust Whirls" | 
+                                                                Weather_Condition == "Heavy Smoke" | 
+                                                                Weather_Condition == "Widespread Dust" | 
+                                                                Weather_Condition ==  "Volcanic Ash" | 
+                                                                Weather_Condition == "Blowing Sand" | 
+                                                                Weather_Condition == "Blowing Sand" | 
+                                                                Weather_Condition == "Funnel Cloud" | 
+                                                                Weather_Condition == "Sand", "low_visibility"))
+
+# Cloudy
+accidents <- accidents %>% mutate(Weather_Condition = replace(Weather_Condition, 
+                                                              Weather_Condition == "Overcast" | 
+                                                                Weather_Condition == "Mostly Cloudy" | 
+                                                                Weather_Condition == "Partly Cloudy" | 
+                                                                Weather_Condition == "Scattered Clouds" | 
+                                                                Weather_Condition == "Thunderstorm" | 
+                                                                Weather_Condition == "Light Thunderstorm"| 
+                                                                Weather_Condition == "Squalls" , "cloudy" ))
+
+# Clear
+accidents <- accidents %>% mutate(Weather_Condition = replace(Weather_Condition, 
+                                                              Weather_Condition == "Clear", "clear"))
+
+
+# We for the visual representation we want to change weather conditions to be a factor with four different levles: 
+accidents$Weather_Condition <- as.factor(accidents$Weather_Condition)
+
+# Getting rid of the Weather_Timestamp variable
+accidents$Weather_Timestamp <- NULL
+```
+
+Creating a new .csv file with the final dataset: 
+
+```{r}
+library(utils)
+write.csv(accidents, 'accidents.csv')
+
+```
+
+Creating a sample of the data
+
+```{r}
+
+sampledata <- accidents[c(1:500),]
+sampledata <- na.omit(sampledata)
+
+write.csv(sampledata, 'sampledata.csv')
+```
+
+
+
+
+
