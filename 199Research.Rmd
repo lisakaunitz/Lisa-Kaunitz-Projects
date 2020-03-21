@@ -1,0 +1,542 @@
+---
+title: 'Stats 199 Research'
+author: "Lisa Kaunitz"
+date: "03/14/2020"
+output: 
+  html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Importing the Data: 
+
+```{r}
+library(readr)
+US_Accidents_May19 <- read_csv("~/Desktop/199 Research/US_Accidents_May19.csv")
+dim(US_Accidents_May19)
+names(US_Accidents_May19)
+```
+
+# Data Cleaning
+
+```{r}
+# cleaning the data a little bit initially: getting rid of the Source variable becuase they all come from MapQuest and are not going to be a significant part of this research, and also getting rid of the End_Lat and End_Lng variables becuase they all have NA's. Becuase we dont have the end lat/long, I made the decision to get rid of the start lat/long becuase it wont be very helpful if I am not able to find out the distances. I am also getting rid of country becuase all of the data comes from the US. Renaming the dataset for simplicity when codeing moving one: 
+accidents <- US_Accidents_May19[,-c(2, 7:10, 19:22)] # Source, Start Lat, Start Lng, End Lat, End Lng, Country, Timezone, Airport Code. 
+```
+
+## New Time Variable: 
+
+```{r}
+
+# `diff.time` is the difference of time in minutes from end to start time of the accident
+accidents$Total_Time <- difftime(US_Accidents_May19$End_Time, US_Accidents_May19$Start_Time, units="mins")
+accidents$Total_Time <- as.numeric(accidents$Total_Time)
+summary(accidents$Total_Time) # It is not realistic to have nevative time, nor 1786320 which is 29,772 hours.  
+
+# Now, we can get rid of the `Start_Time` and `End_Time` variables. We also dont need the Street Number 
+accidents <- accidents[,-c(4,5,8)]
+
+# Fix Total_Time variable so we dont have negative time values: 
+accidents$Total_Time = ifelse(accidents$Total_Time > 0, accidents$Total_Time, NA) # got rid of 13 values 
+# Creating a cap on the amount of time the accident took (getting rid of extreme values) 
+accidents$Total_Time = ifelse(accidents$Total_Time > 400, NA, accidents$Total_Time) # total of 4,745 NA's now. 
+summary(accidents$Total_Time)
+
+# I wanted to get rid of the extreme values in the Total_Time variable becuase it is not possible to have negative time, and it is also very unlikely to have an accident take more than 6.66 hours, which is what I capped it at in 400 min.
+# This overall pulled the mean down from 180 min to 94, which is still quite high but more reasonable. The median of half an hour I believe is very reasonable for this data. 
+
+```
+
+## Cleaning Weather Conditions
+
+```{r}
+library(dplyr)
+unique(accidents$Weather_Condition)
+
+# With 62 different reported weather conditions, we can group them up into 5 main groups: rain, snow, low_visibility, cloudy, clear
+unique(US_Accidents_May19$Weather_Condition)
+# Rain 
+accidents <- accidents  %>% 
+  mutate(Weather_Condition = replace(Weather_Condition, 
+                                     Weather_Condition == "Light Rain" |
+                                     Weather_Condition == "Rain" | 
+                                       Weather_Condition == "Light Drizzle" | 
+                                       Weather_Condition == "Heavy Rain" | 
+                                       Weather_Condition == "Mist" | 
+                                       Weather_Condition == "Drizzle" | 
+                                       Weather_Condition == "Rain Showers" | 
+                                       Weather_Condition ==  "Light Thunderstorms and Rain" | 
+                                       Weather_Condition == "Light Rain Showers" |
+                                       Weather_Condition == "Light Freezing Rain" | 
+                                       Weather_Condition == "Heavy Drizzle" | 
+                                       Weather_Condition =="Heavy Thunderstorms and Rain" | 
+                                       Weather_Condition == "Thunderstorms and Rain" | 
+                                       Weather_Condition == "Heavy Rain Showers", "rain" ))
+
+# Snow
+accidents <- accidents %>% mutate(Weather_Condition = replace(Weather_Condition, 
+                                                              Weather_Condition == "Light Freezing Drizzle" |
+                                                                Weather_Condition == "Light Snow" | 
+                                                                Weather_Condition == "Snow" | 
+                                                                Weather_Condition == "Hail" | 
+                                                                Weather_Condition == "Blowing Snow" | 
+                                                                Weather_Condition == "Heavy Snow" | 
+                                                                Weather_Condition == "Ice Pellets" |
+                                                                Weather_Condition == "Low Drifting Snow" | 
+                                                                Weather_Condition == "Light Thunderstorms and Snow" | 
+                                                                Weather_Condition == "Light Ice Pellets" | 
+                                                                Weather_Condition == "Snow Showers" | 
+                                                                Weather_Condition == "Light Snow Showers" | 
+                                                                Weather_Condition == "Heavy Thunderstorms and Snow" | 
+                                                                Weather_Condition == "Snow Grains" | 
+                                                                Weather_Condition == "Heavy Blowing Snow" | 
+                                                                Weather_Condition ==  "Heavy Freezing Drizzle" | 
+                                                                Weather_Condition == "Light Blowing Snow" | 
+                                                                Weather_Condition == "Small Hail" | 
+                                                                Weather_Condition == "Heavy Thunderstorms with Small Hail" | 
+                                                                Weather_Condition == "Light Snow Grains" | 
+                                                                Weather_Condition == "Heavy Ice Pellets" | 
+                                                                Weather_Condition == "Heavy Freezing Rain" | 
+                                                                Weather_Condition == "Light Hail" | 
+                                                                Weather_Condition == "Thunderstorms and Snow", "snow"))
+
+# Low Visibility
+accidents <- accidents %>% mutate(Weather_Condition = replace(Weather_Condition, 
+                                                              Weather_Condition == "Haze" | 
+                                                                Weather_Condition == "Fog" | 
+                                                                Weather_Condition == "Shallow Fog" | 
+                                                                Weather_Condition == "Light Haze" | 
+                                                                Weather_Condition == "Smoke" | 
+                                                                Weather_Condition == "Patches of Fog" |
+                                                                Weather_Condition ==  "Light Freezing Fog"  | 
+                                                                Weather_Condition == "Light Fog" | 
+                                                                Weather_Condition ==  "Dust Whirls" | 
+                                                                Weather_Condition == "Heavy Smoke" | 
+                                                                Weather_Condition == "Widespread Dust" | 
+                                                                Weather_Condition ==  "Volcanic Ash" | 
+                                                                Weather_Condition == "Blowing Sand" | 
+                                                                Weather_Condition == "Blowing Sand" | 
+                                                                Weather_Condition == "Funnel Cloud" | 
+                                                                Weather_Condition == "Sand", "low_visibility"))
+
+# Cloudy
+accidents <- accidents %>% mutate(Weather_Condition = replace(Weather_Condition, 
+                                                              Weather_Condition == "Overcast" | 
+                                                                Weather_Condition == "Mostly Cloudy" | 
+                                                                Weather_Condition == "Partly Cloudy" | 
+                                                                Weather_Condition == "Scattered Clouds" | 
+                                                                Weather_Condition == "Thunderstorm" | 
+                                                                Weather_Condition == "Light Thunderstorm"| 
+                                                                Weather_Condition == "Squalls" , "cloudy" ))
+
+# Clear
+accidents <- accidents %>% mutate(Weather_Condition = replace(Weather_Condition, 
+                                                              Weather_Condition == "Clear", "clear"))
+
+# Checking for the new variables: 
+unique(accidents$Weather_Condition) # there are now only 4 groups and then the NA's remain.. 
+
+# We for the visual representation we want to change weather conditions to be a factor with four different levles: 
+accidents$Weather_Condition <- as.factor(accidents$Weather_Condition)
+
+# Getting rid of the Weather_Timestamp variable
+accidents$Weather_Timestamp <- NULL
+
+```
+
+# Exploratory Data Analysis: 
+
+```{r}
+library(dplyr)
+## Total Numeric Variables 
+accidents %>%
+    select(Severity,
+           `Distance(mi)`, # does not look significant 
+           `Temperature(F)`,
+           `Wind_Chill(F)`,
+           `Humidity(%)`,
+           `Pressure(in)`, # does not look significant 
+           `Visibility(mi)`, # does not look significant
+           `Wind_Speed(mph)`, 
+           `Precipitation(in)`, # does not look significant 
+           Total_Time) %>%
+    summary()
+```
+
+It goes against my intuition that precipitation, distance affected and visibility would not have much statistical siginificance becuase they seem like they would be the most influential factors in someones driving capabilities. You would assume that the more it rained (higher precidiptation), the driver would have harder time viewing the road or they would have a higher likelihood of hydroplaning and causing a crash. Similarly, distance and visibility go hand-in-hand that they would be important factors in causing accidents, preventing the driver from being aware of possible risks ahead.
+
+
+## TMC 
+
+```{r}
+library(ggplot2)
+unique(accidents$TMC)
+# 200: multi vehicle pile up. Delays
+# 201: accidents
+# 202: serious accident(s)
+# 203: multi-vehicle accident
+# 206: fuel spillage accident(s)
+# 222: accident(s). Queuing traffic
+# 229: accident(s). Slow traffic
+# 236: accident(s). Heavy traffic
+# 239: accident(s). Traffic building up
+# 241: accident(s). Right lane blocked
+# 244: accident(s). Hard shoulder blocked
+# 245: accident(s). Two lanes blocked
+# 246: accident. Three lanes blocked
+# 247: accident. Delays 
+# 248: accident. Delays expected
+# 336: oil spillage accident(s)
+# 339: jackknifed trailer(s)
+# 341: jackknifed articulated lorr(y/ies)
+# 343: earlier accident(s)
+# 351: accident in roadworks area
+# 406: entry slip road closed
+
+# Looking to see which TMC shows up the most 
+summary(accidents$TMC)
+sort(table(accidents$TMC))
+
+ggplot(data = subset(accidents, !is.na(TMC)), aes(x = TMC)) + 
+  geom_histogram(aes(fill = ..count..)) + 
+  theme_bw()
+```
+
+We can see from the table and graphical representation of the TMC type of accident reported, that the 5 most common were: 1. 201: accident
+2. 241: right lane blocked,
+3. 245: Two lanes blocked, 
+4. 229: Slow traffic, 
+5. 203: multi-vehicle accdient
+
+
+I find it interesting that the least amount of accidents happened in roadwork areas (351 category). This could be further investigated and even hypothesised that there were only 6 occurences becuase of _human handling_. It is no suprise that most people would slow down and be more attentive in road work areas becuase of the higher fines that go along with getting stopped in these zones. It would be very interesting to see if this would change in autonomous vehicles becuase machines do not carry the same logic that humans do, in being hyperaware when they are driving through specific zones such as roadwork areas. It would be interesting to see if autonomous vehicles would actually result in a higher count of accdients in these zones. 
+
+
+## Accident Signals
+
+```{r}
+library(tidyr)
+library(ggplot2)
+## Graphical representation
+signals <- accidents %>%
+    select(Amenity:Turning_Loop) %>%
+    pivot_longer( cols = Amenity:Turning_Loop,
+        names_to = 'Annotation',
+        values_to = 'Trues') %>%
+    filter(Trues == TRUE) %>%
+    group_by(Annotation) %>%
+    summarise(Total = n())
+
+signals %>%
+    ggplot() +
+    geom_bar(aes(y = Total,
+                 x = reorder(Annotation, Total, FUN = abs),
+                 fill = Total),
+             stat = 'identity') +
+    coord_flip() +
+    labs(x = NULL) +
+    theme(legend.position="none") +
+  theme_bw()
+```
+
+
+We can see that most accidents tend to happen at Traffic Signals, then Junctions, then Crossings. 
+
+This information is important when relating it to what would be the best priority when looking at autonomous vehicles. If most accidents happen at traffic signals, then we can try to see all the factors that lead into traffic signals. It is obviously important for image recognition to be able to properly tell the difference between the traffic lights, however, it is also worth thinking about WHY traffic signals have the most accidents. Psychologically speaking, it makes sense that when a driver sees a green light they are more prone to worry less about what they are doing when goign through traffic signals, because a green light simulates a "go" response. Most of the variation from traffic signal accidents must come from:
+- cars from the perpendicular street turning right on red and the onward traffic not slowing down because they have the right of way
+- cars making an unprotected left turn getting hit by oncoming traffic that also has a green light indicating they have the right of way
+
+```{r}
+
+## Severity: 1 is lesser, 4 is higher
+unique(accidents$Severity)
+
+```
+
+## Numeric Variables 
+
+Now we are going deeper into the numeric variables that could possibly have certain influence in the occurrence of accidents, due to their extreme values. Therefore, we start by observing if the extreme values (such as too cold or too hot weather) are a normal trend for the accidents to happen, or they are rather atypical values.
+
+```{r}
+library(ggplot2)
+## Temperature
+
+ggplot(accidents, aes(x =`Temperature(F)` )) + 
+  geom_histogram() + 
+  theme_bw()
+
+```
+
+
+
+```{r}
+library(ggplot2)
+## Wind chill
+
+ggplot(accidents, aes(x =`Wind_Chill(F)` )) + 
+  geom_histogram() + 
+  theme_bw()
+
+```
+
+
+
+```{r}
+library(ggplot2)
+## Wind speed
+ggplot(accidents, aes(x =`Wind_Speed(mph)` )) + 
+  geom_histogram() + 
+  theme_bw()
+
+accidents %>%
+    select(`Wind_Speed(mph)`) %>%
+    filter(`Wind_Speed(mph)` < 25) %>%
+    ggplot() +
+    geom_histogram(aes(x = `Wind_Speed(mph)`)) + 
+  theme_bw()
+```
+
+
+## Humidity 
+
+We want to see the baseline for humidity and then use that baseline to see how much autonomous cars can prevent accidents when implemented... 
+
+```{r}
+library(ggplot2)
+## Humidity
+
+ggplot(data = subset(accidents, !is.na(`Humidity(%)`)), x = `Humidity(%)`) +
+  geom_histogram(aes(x = `Humidity(%)`, y = ..density..), binwidth = 2, color = "black", fill = "white") +
+  geom_density(aes(x = `Humidity(%)`, y = ..density..), alpha = 0.2, fill = "#FF6666") +
+  theme_bw() +
+  geom_vline(aes(xintercept = mean(`Humidity(%)`, na.rm = T)), color = "red", linetype = "dashed", size = 1) +
+  geom_hline(yintercept = 0.014, color = "black", linetype = "dashed", size = .5) +
+  ggtitle("Number of accidents relative to Humidity")
+
+
+# We can see that the median for Humidity is 68%, and the mean is 65.93%.. 
+# When looking at the graph, we can see that the number of accidents (density) will level out at around the mean/ median scores, and then increases. We can look at the literature for why this happens, but from a statistical persepective, we can predict that autonomous vehicles will be able to decrease 27 % of accidents on the road. 
+# All of these predictions would be very plausible in a homogeneous system that has all working communication within all vehicles as well as with the infrastructure such as traffic signals, pedestrian crosswalk signs, etc.... 
+
+```
+
+
+Finding out how many accidents autonomous vehicles can prevent due to humidity: 
+
+```{r}
+library(dplyr)
+# need to find the exact count of accidents at the mean and median humidities... 
+sort(table(accidents$`Humidity(%)` > 65)) # 1,163,778 and  2179472 total 
+1163778 / (1163778+1015694)
+
+summary(accidents$`Humidity(%)`) # Mean 65.93
+sort(table(accidents$`Humidity(%)`))
+
+34219 + 35201 + 35893 + 36219 + 36802 + 37191 + 40106 + 46839 + 47820 + 47853 + 84731 + 99444 
+# 582,318
+
+582318 / 2179472
+
+```
+
+
+# Weather_Condition
+
+### EDA with `Weather_Conditions`
+
+```{r}
+library(ggplot2)
+ggplot(data = subset(accidents, !is.na(Weather_Condition)) , aes(x = Weather_Condition)) +
+  geom_bar(color = "black", fill = c("light yellow", "grey", "black", "light blue", "white")) +
+  theme_bw() +
+  ggtitle("Accidents relative to Weather Condition")
+
+library(xtable)
+options(xtable.comment = FALSE)
+options(xtable.timestamp = "")
+wctbl <- sort(table(accidents$Weather_Condition))
+xtable(wctbl)
+
+```
+
+
+
+# States 
+
+Now we can explore a little bit the accidents in different states: 
+- which state has the main occurrence of accidents? 
+- Which one the most severe ones? 
+- Is there a relationship with the traffic lights or the humidity as we discovered early?
+
+```{r}
+library(ggplot2)
+# Amount of accidents per state
+accidents %>%
+    select(State) %>%
+    group_by(State) %>%
+    summarise(Total = n()) %>%
+    ggplot() +
+    geom_bar(aes(y = Total,
+                 x = reorder(State, Total, FUN = abs),
+                 fill = Total),
+             stat = 'identity') +
+    coord_flip() +
+    labs(x = NULL) +
+    theme(legend.position="none") +
+  theme_bw() +
+  ggtitle("Accident data Distribution by State")
+```
+
+We can see that California has the most amount of total accidents, but that may be simply because they have the most drivers compared to the other states, so we need to look at the proportions, of the accidents to the total drivers in the state
+
+```{r}
+library(readr)
+library(ggplot2)
+## Amount per state/severity, proportional as found by Manuel T.
+accidents %>%
+     select(Severity, State) %>%
+     mutate(State = parse_factor(State),
+            Severity = parse_factor(as.character(Severity))) %>%
+     group_by(State, Severity) %>%
+     summarise(Total = n()) %>%
+     ggplot() +
+     geom_bar(aes(y = Total,
+                  x = State,
+                  fill = Severity),
+              stat = 'identity',
+              position = 'fill') +
+     coord_flip() +
+     scale_fill_brewer(palette = 'BuPu') +
+     labs(x = NULL) +
+   theme_bw() +
+   ggtitle("Severity of Accidents per State")
+
+
+ library(cowplot)
+ ## Function created by Manuel T. 
+plot_SevState <- function(sev, min = 10000) {
+     accidents %>%
+         select(State, Severity) %>%
+         filter(Severity == sev) %>%
+         group_by(State) %>%
+         summarise(Total = n()) %>%
+         filter(Total > min) %>%
+         ggplot() +
+         geom_bar(aes(y = Total,
+                      x = reorder(State, Total, FUN = abs),
+                      fill = Total),
+                  stat = 'identity') +
+         coord_flip() +
+         labs(x = NULL, y = paste("Severity", sev, "Total")) +
+         theme(legend.position="none") +
+     theme_bw()
+ }
+
+ ## Visualization
+ plot_grid(
+     plot_SevState(1, min = 50),
+     plot_SevState(2, min = 50000),
+     plot_SevState(3),
+     plot_SevState(4, min = 2000))
+```
+
+Taking a closer look at CA, TX, FL: 
+
+```{r}
+library(dplyr)
+# CA 
+filter(accidents, State == "CA") %>%
+    select(Amenity:Turning_Loop) %>%
+    summary()
+# TX 
+filter(accidents, State == "TX") %>%
+    select(Amenity:Turning_Loop) %>%
+    summary()
+# FL 
+filter(accidents, State == "FL") %>%
+    select(Amenity:Turning_Loop) %>%
+    summary()
+```
+
+
+# Time
+Now taking a look at accidents per hour
+
+```{r}
+library(ggplot2)
+library(lubridate)
+ggplot(US_Accidents_May19, aes(x = hour(Start_Time))) +
+  geom_histogram(stat = 'count', color = "black", fill = "light blue") +
+  theme_bw() +
+  labs(x = "Hour of the Day (24h scale)", y = "No. of Accidents") +
+  ggtitle("Accidents per Hour") +
+  scale_x_continuous(breaks = seq(0, 23, by = 1))
+    
+```
+
+We can see from the graph above that the accidents distribution tend to be bimodal, with most of them happening around 7-8am and then 4-5pm which would follow our intuition becuase that is when the majority of people commute to and from work, resulting in rush hour and navigating with more drivers and traffic than the other hours.
+
+One thing that stands out to me is that most of the accidents would happen in the morning rush hour times as opposed to the afternoon rush hour times becuase in other studies it has been found that most accidents tend to happen on our way's from work becuase we are more tired and irritable than in the morning when we are fresh.
+
+
+```{r}
+library(dplyr)
+library(ggplot2)
+## Month and humidity as visualized by Manuel T. 
+US_Accidents_May19 %>%
+    select(Start_Time, `Humidity(%)`) %>%
+    mutate(Month = month(Start_Time,
+                            label = T)) %>%
+    group_by(Month) %>%
+    summarise(Avg_Hum = mean(`Humidity(%)`, na.rm = T),
+              Count = n()) %>%
+    ggplot(aes(x = Month, y = Avg_Hum)) +
+    geom_point(aes(size = Count))
+```
+
+
+This graph is very telling in the relationship between the humidity and and the count of accidents because we can see that in the months where there is higher avg. humidity, there is also a higher count of accidents: an example would be to look at the month of February, which has high avg. humidity and also high counts, and compare it to the month of May where ther is lower avg. humidity and lower counts. This relationship however is not linear in any sense becuase months like March can be outliers in the data becuase there tends to be lower avg. humidity and relatively higher counts of accidents as well.
+
+
+#Word Cloud: 
+
+```{r splitData, echo=FALSE, include=FALSE}
+# we split the data into smaller sub parts to be able to use a lot less data for our predictions. "Making it tidy"
+# Install
+# install.packages("tm")  # for text mining
+# install.packages("SnowballC") # for text stemming
+# install.packages("wordcloud") # word-cloud generator 
+# install.packages("RColorBrewer") # color palettes
+# Load
+library("tm")
+library("SnowballC")
+library("wordcloud")
+library("RColorBrewer")
+
+textData <- select(accidents, ID,Description,Weather_Condition)
+```
+
+Creating the word cloud : initially I tried to create a term-document matrix, however I woudl get an error stating that my computer has reached it maximum memory limit, so I was not able to move forward with that method. I did some research and found this to be the most effective method for my purposes. 
+
+```{r wordCloud ,echo=FALSE}
+library("tm")
+library("SnowballC")
+library("wordcloud")
+library("RColorBrewer")
+set.seed(27)
+accidentCorpus <- select(textData,Description) %>% VectorSource() %>% 
+  VCorpus() %>% 
+  tm_map(stripWhitespace) %>% # get rid of whitespace
+  tm_map(removeNumbers) %>% #no numbers, there's quite a lot
+  tm_map(removePunctuation) %>%  #no punctuation
+  tm_map(content_transformer(tolower)) %>% # get everything lowercase
+  tm_map(removeWords, stopwords("english")) # remove function words, like at and by
+pal2 <- brewer.pal(8,"Pastel2")
+accidentCorpus %>% wordcloud(max.words = 40, scale = c(5, 1),colors = pal2, random.color = TRUE)
+
+
+```
+
+
