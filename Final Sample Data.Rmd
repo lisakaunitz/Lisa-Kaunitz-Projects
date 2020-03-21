@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 Sample of Data: 
 
 ```{r}
-US_Accidents_May19 <- read_csv("~/Desktop/199 Research/US_Accidents_May19.csv")
+US_Accidents_May19 <- read_csv("US_Accidents_May19.csv")
 
 ```
 
