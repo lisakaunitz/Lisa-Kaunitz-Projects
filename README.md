@@ -9,10 +9,11 @@ implemented in autonomous vehicles.
 
 **199report.pdf**: is the final pdf version of the report. The code used to create the report is added at the appendix of the report and can be used to reproduce the pdf. This also includes the codebook used in the final dataset. 
 
-**Final_Sample_Data.Rmd**: is the rmd file with the cleaned data and the final dataset used - accidents.csv, along with a sample of the data - sampledata.csv
+**199sampledata.csv**: is the csv file of a sample of the final dataset that was used. 
 
-**sampledata.csv**: is the csv file of a sample of the final dataset that was used. 
-
+## Statistical Consulting Project
+Myself and five other talented individuals worked with Dr. Ariana Anderson, Ph.D (our client) to find: what are the significant risk factors that predispose a child to ASD behaviors? 
+ 
 
 
 
